@@ -41,8 +41,10 @@ class UserPasswordSecurityTests {
     @Test
     void createHashesPasswordAndDoesNotReturnIt() throws Exception {
         String rawPassword = "ClaveSegura123!";
+        String accessToken = obtainAccessToken();
 
         MvcResult result = mockMvc.perform(post("/api/users")
+                        .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -72,7 +74,10 @@ class UserPasswordSecurityTests {
 
     @Test
     void createRejectsPasswordThatDoesNotMeetRequirements() throws Exception {
+        String accessToken = obtainAccessToken();
+
         mockMvc.perform(post("/api/users")
+                        .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -91,8 +96,10 @@ class UserPasswordSecurityTests {
     @Test
     void createRejectsPasswordLongerThanBcryptUtf8Limit() throws Exception {
         String unicodePassword = "Aa1!" + "😀".repeat(34);
+        String accessToken = obtainAccessToken();
 
         mockMvc.perform(post("/api/users")
+                        .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -112,8 +119,10 @@ class UserPasswordSecurityTests {
     void updateWithoutPasswordPreservesExistingHash() throws Exception {
         User user = createUser("ana-preserve@example.com", "ClaveSegura123!");
         String originalHash = user.getPassword();
+        String accessToken = obtainAccessToken();
 
         mockMvc.perform(put("/api/users/{id}", user.getId())
+                        .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -137,8 +146,10 @@ class UserPasswordSecurityTests {
         User user = createUser("ana-update@example.com", "ClaveSegura123!");
         String originalHash = user.getPassword();
         String newPassword = "NuevaClave123!";
+        String accessToken = obtainAccessToken();
 
         mockMvc.perform(put("/api/users/{id}", user.getId())
+                        .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -160,10 +171,33 @@ class UserPasswordSecurityTests {
     }
 
     @Test
-    void userEndpointsRemainPublicDuringPasswordHashingIncrement()
+    void userEndpointsRequireAuthentication()
             throws Exception {
         mockMvc.perform(get("/api/users"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/api/users")
+                        .header("Authorization", "Bearer " + obtainAccessToken()))
                 .andExpect(status().isOk());
+    }
+
+    private String obtainAccessToken() throws Exception {
+        createUser("password-tests@example.com", "LoginPassword123!");
+
+        MvcResult result = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "password-tests@example.com",
+                                  "password": "LoginPassword123!"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        return objectMapper.readTree(result.getResponse().getContentAsString())
+                .get("accessToken")
+                .asText();
     }
 
     private User createUser(String email, String rawPassword) {

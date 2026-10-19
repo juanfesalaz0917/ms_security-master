@@ -28,6 +28,7 @@ public class GlobalExceptionHandler {
             case NOT_FOUND -> HttpStatus.NOT_FOUND;
             case ALREADY_EXISTS -> HttpStatus.CONFLICT;
             case INVALID_OPERATION -> HttpStatus.CONFLICT;
+            case UNAUTHORIZED -> HttpStatus.UNAUTHORIZED;
         };
 
         Map<String, String> error = new LinkedHashMap<>();
@@ -97,7 +98,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
 }
-
 
 
 

@@ -1,6 +1,7 @@
 package com.uc.ms_security.service;
 
 import java.util.List;
+import java.util.Locale;
 
 import com.uc.ms_security.dto.permission.CreatePermissionDTO;
 import com.uc.ms_security.dto.permission.PermissionResponseDTO;
@@ -76,6 +77,38 @@ public class PermissionService {
         }
 
         permissionRepository.delete(permission);
+    }
+
+    // Verificación que el usuario mediante su role tenga permiso para hacer alguna acción
+    @Transactional(readOnly = true)
+    public boolean hasPermission(
+            Long userId,
+            String httpMethod,
+            String requestUrl) {
+
+        if (userId == null || httpMethod == null || requestUrl == null) {
+            return false;
+        }
+
+        String normalizedUrl = normalizeUrl(requestUrl);
+
+        return permissionRepository
+                .findByUserIdAndMethodAndUrl(
+                        userId,
+                        httpMethod.toUpperCase(Locale.ROOT),
+                        normalizedUrl
+                )
+                .stream()
+                .findAny()
+                .isPresent();
+    }
+
+
+    private String normalizeUrl(String requestUrl) {
+        return requestUrl.replaceAll(
+                "(?i)(?<=/)(?:\\d+|[a-f0-9]{24})(?=/|$)",
+                "{id}"
+        );
     }
 
     private Permission findPermission(Long id) {

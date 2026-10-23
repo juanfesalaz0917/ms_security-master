@@ -1,6 +1,11 @@
 package com.uc.ms_security.controller;
 
 import com.uc.ms_security.entity.User;
+import com.uc.ms_security.TestPermissionAssigner;
+import com.uc.ms_security.repository.PermissionRepository;
+import com.uc.ms_security.repository.RolePermissionRepository;
+import com.uc.ms_security.repository.RoleRepository;
+import com.uc.ms_security.repository.UserRoleRepository;
 import com.uc.ms_security.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +49,18 @@ class AuthJwtSecurityTests {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private RoleRepository roleRepository;
+
+    @Autowired
+    private UserRoleRepository userRoleRepository;
+
+    @Autowired
+    private PermissionRepository permissionRepository;
+
+    @Autowired
+    private RolePermissionRepository rolePermissionRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -120,6 +137,7 @@ class AuthJwtSecurityTests {
     void validTokenAllowsProtectedEndpointAndExpiredTokenIsRejected()
             throws Exception {
         User user = createUser();
+        grantPermission(user, "GET", "/api/users");
         String validToken = loginAndGetToken();
 
         mockMvc.perform(get("/api/users")
@@ -141,6 +159,15 @@ class AuthJwtSecurityTests {
         user.setEmail(EMAIL);
         user.setPassword(passwordEncoder.encode(PASSWORD));
         return userRepository.save(user);
+    }
+
+    private void grantPermission(User user, String method, String url) {
+        new TestPermissionAssigner(
+                roleRepository,
+                userRoleRepository,
+                permissionRepository,
+                rolePermissionRepository
+        ).grant(user, method, url);
     }
 
     private String loginAndGetToken() throws Exception {

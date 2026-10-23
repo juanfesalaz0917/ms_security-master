@@ -1,6 +1,11 @@
 package com.uc.ms_security.controller;
 
+import com.uc.ms_security.TestPermissionAssigner;
 import com.uc.ms_security.entity.User;
+import com.uc.ms_security.repository.PermissionRepository;
+import com.uc.ms_security.repository.RolePermissionRepository;
+import com.uc.ms_security.repository.RoleRepository;
+import com.uc.ms_security.repository.UserRoleRepository;
 import com.uc.ms_security.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +39,18 @@ class UserPasswordSecurityTests {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private RoleRepository roleRepository;
+
+    @Autowired
+    private UserRoleRepository userRoleRepository;
+
+    @Autowired
+    private PermissionRepository permissionRepository;
+
+    @Autowired
+    private RolePermissionRepository rolePermissionRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -182,7 +199,16 @@ class UserPasswordSecurityTests {
     }
 
     private String obtainAccessToken() throws Exception {
-        createUser("password-tests@example.com", "LoginPassword123!");
+        User user = createUser("password-tests@example.com", "LoginPassword123!");
+        TestPermissionAssigner permissionAssigner = new TestPermissionAssigner(
+                roleRepository,
+                userRoleRepository,
+                permissionRepository,
+                rolePermissionRepository
+        );
+        permissionAssigner.grant(user, "GET", "/api/users");
+        permissionAssigner.grant(user, "POST", "/api/users");
+        permissionAssigner.grant(user, "PUT", "/api/users/{id}");
 
         MvcResult result = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)

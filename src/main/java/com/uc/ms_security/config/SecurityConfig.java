@@ -1,5 +1,7 @@
 package com.uc.ms_security.config;
 
+import com.uc.ms_security.authorization.DynamicAuthorizationManager;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -10,7 +12,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final DynamicAuthorizationManager dynamicAuthorizationManager;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -18,19 +23,31 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http)
-            throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http) throws Exception {
+
         http
                 .csrf(csrf -> csrf.disable())
-                .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(
+                                SessionCreationPolicy.STATELESS
+                        )
                 )
+
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/login").permitAll()
-                        .anyRequest().authenticated()
+                        .requestMatchers(
+                                "/api/auth/login"
+                        ).permitAll() // Bloquea las rutas excepto la del login
+
+                        .anyRequest()
+                        .access(dynamicAuthorizationManager)
                 )
-                .oauth2ResourceServer(resourceServer -> resourceServer
-                        .jwt(Customizer.withDefaults())
+
+                .oauth2ResourceServer(resourceServer ->
+                        resourceServer.jwt(
+                                Customizer.withDefaults()
+                        )
                 );
 
         return http.build();
